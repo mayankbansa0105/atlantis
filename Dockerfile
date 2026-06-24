@@ -51,7 +51,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 COPY . /app
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags "-s -w -X 'main.version=${ATLANTIS_VERSION}' -X 'main.commit=${ATLANTIS_COMMIT}' -X 'main.date=${ATLANTIS_DATE}'" -v -o atlantis .
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags "-s -w -X 'main.version=${ATLANTIS_VERSION}' -X 'main.commit=${ATLANTIS_COMMIT}' -X 'main.date=${ATLANTIS_DATE}'" -v -o /app/atlantis ./main.go
+
 # Build git-lfs from source to fix CVE-2025-68121
 # The official v3.7.1 binary is built with Go 1.25.3, we rebuild with Go 1.25.8
 # renovate: datasource=github-releases depName=git-lfs/git-lfs
@@ -81,6 +82,8 @@ ENV DEBIAN_DUMB_INIT_VERSION="1.2.5-2"
 ENV DEBIAN_GNUPG_VERSION="2.2.40-1.1+deb12u2"
 # renovate: datasource=repology depName=debian_12/openssl versioning=loose
 ENV DEBIAN_OPENSSL_VERSION="3.0.20-1~deb12u1"
+# renovate: datasource=repology depName=debian_12/jq versioning=loose
+ENV DEBIAN_JQ_VERSION="1.7.1-3+b1"
 
 # Set up the 'atlantis' user and adjust permissions. User with uid 1000 is for backwards compatibility
 RUN groupadd --gid 1000 atlantis && \
@@ -100,7 +103,8 @@ RUN apt-get update && \
     openssh-server=${DEBIAN_OPENSSH_SERVER_VERSION} \
     dumb-init=${DEBIAN_DUMB_INIT_VERSION} \
     gnupg=${DEBIAN_GNUPG_VERSION} \
-    openssl=${DEBIAN_OPENSSL_VERSION} && \
+    openssl=${DEBIAN_OPENSSL_VERSION} \
+    jq=${DEBIAN_JQ_VERSION} && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -203,6 +207,8 @@ ENV DUMB_INIT_VERSION="1.2.5-r3"
 ENV GCOMPAT_VERSION="1.1.0-r4"
 # renovate: datasource=repology depName=alpine_3_23/coreutils versioning=loose
 ENV COREUTILS_ENV_VERSION="9.8-r1"
+# renovate: datasource=repology depName=alpine_3_23/jq versioning=loose
+ENV JQ_VERSION="1.7.1-r0"
 
 # Install packages needed to run Atlantis.
 # We place this last as it will bust less docker layer caches when packages update
@@ -215,7 +221,8 @@ RUN apk add --no-cache \
     openssh=${OPENSSH_VERSION} \
     dumb-init=${DUMB_INIT_VERSION} \
     gcompat=${GCOMPAT_VERSION} \
-    coreutils-env=${COREUTILS_ENV_VERSION}
+    coreutils-env=${COREUTILS_ENV_VERSION} \
+    jq=${JQ_VERSION}
 
 # Strip file capabilities only under fcap_scan_dirs (common rootfs locations for
 # binaries and libs: /bin, /sbin, /usr, /opt, /lib, /lib64). This is a scoped
