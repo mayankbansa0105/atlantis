@@ -127,17 +127,21 @@ RUN AVAILABLE_CONFTEST_VERSIONS=${DEFAULT_CONFTEST_VERSION} && \
 # renovate: datasource=github-releases depName=git-lfs/git-lfs
 ENV GIT_LFS_VERSION=3.7.1
 
-RUN case ${TARGETPLATFORM} in \
-        "linux/amd64") GIT_LFS_ARCH=amd64 ;; \
-        "linux/arm64") GIT_LFS_ARCH=arm64 ;; \
-        "linux/arm/v7") GIT_LFS_ARCH=arm ;; \
-    esac && \
-    curl -L -s --output git-lfs.tar.gz "https://github.com/git-lfs/git-lfs/releases/download/v${GIT_LFS_VERSION}/git-lfs-linux-${GIT_LFS_ARCH}-v${GIT_LFS_VERSION}.tar.gz" && \
-    curl -L -s --output sha256sums.asc "https://github.com/git-lfs/git-lfs/releases/download/v${GIT_LFS_VERSION}/sha256sums.asc" && \
-    grep "git-lfs-linux-${GIT_LFS_ARCH}-v${GIT_LFS_VERSION}.tar.gz" sha256sums.asc | sha256sum -c && \
-    tar --strip-components=1 -xf git-lfs.tar.gz && \
-    chmod +x git-lfs && \
-    mv git-lfs /usr/bin/git-lfs && \
+RUN set -eux; \
+    case ${TARGETPLATFORM} in \
+      "linux/amd64") GIT_LFS_ARCH=amd64 ;; \
+      "linux/arm64")  GIT_LFS_ARCH=arm64 ;; \
+      "linux/arm/v7") GIT_LFS_ARCH=arm ;; \
+      *) echo "Unsupported platform: ${TARGETPLATFORM}"; exit 1 ;; \
+    esac; \
+    TARBALL="git-lfs-linux-${GIT_LFS_ARCH}-v${GIT_LFS_VERSION}.tar.gz"; \
+    URL="https://github.com/git-lfs/git-lfs/releases/download/v${GIT_LFS_VERSION}/${TARBALL}"; \
+    curl -fSL --output "${TARBALL}" "${URL}"; \
+    # optional: verify checksum here if you have a known value (SHA256_EXPECTED); \
+    tar -xzf "${TARBALL}"; \
+    # extracted dir is git-lfs-<version> or similar
+    mv git-lfs-*/git-lfs /usr/bin/git-lfs; \
+    rm -rf "${TARBALL}" git-lfs-*; \
     git-lfs --version
 
 # install terraform binaries
