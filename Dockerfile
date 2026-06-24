@@ -52,6 +52,15 @@ COPY . /app
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags "-s -w -X 'main.version=${ATLANTIS_VERSION}' -X 'main.commit=${ATLANTIS_COMMIT}' -X 'main.date=${ATLANTIS_DATE}'" -v -o atlantis .
+# Build git-lfs from source to fix CVE-2025-68121
+# The official v3.7.1 binary is built with Go 1.25.3, we rebuild with Go 1.25.8
+# renovate: datasource=github-releases depName=git-lfs/git-lfs
+ARG GIT_LFS_VERSION=3.7.1
+WORKDIR /tmp/git-lfs-build
+RUN apk add --no-cache git make && \
+    git clone --branch v${GIT_LFS_VERSION} --depth 1 https://github.com/git-lfs/git-lfs.git . && \
+    GOOS=${TARGETOS} GOARCH=${TARGETARCH} make && \
+    chmod +x bin/git-lfs
 
 FROM debian:${DEBIAN_TAG} AS debian-base
 
@@ -125,24 +134,8 @@ RUN AVAILABLE_CONFTEST_VERSIONS=${DEFAULT_CONFTEST_VERSION} && \
 
 # install git-lfs
 # renovate: datasource=github-releases depName=git-lfs/git-lfs
-ENV GIT_LFS_VERSION=3.7.1
-
-RUN set -eux; \
-    case ${TARGETPLATFORM} in \
-      "linux/amd64") GIT_LFS_ARCH=amd64 ;; \
-      "linux/arm64")  GIT_LFS_ARCH=arm64 ;; \
-      "linux/arm/v7") GIT_LFS_ARCH=arm ;; \
-      *) echo "Unsupported platform: ${TARGETPLATFORM}"; exit 1 ;; \
-    esac; \
-    TARBALL="git-lfs-linux-${GIT_LFS_ARCH}-v${GIT_LFS_VERSION}.tar.gz"; \
-    URL="https://github.com/git-lfs/git-lfs/releases/download/v${GIT_LFS_VERSION}/${TARBALL}"; \
-    curl -fSL --output "${TARBALL}" "${URL}"; \
-    # optional: verify checksum here if you have a known value (SHA256_EXPECTED); \
-    tar -xzf "${TARBALL}"; \
-    # extracted dir is git-lfs-<version> or similar
-    mv git-lfs-*/git-lfs /usr/bin/git-lfs; \
-    rm -rf "${TARBALL}" git-lfs-*; \
-    git-lfs --version
+COPY --from=builder /tmp/git-lfs-build/bin/git-lfs /usr/bin/git-lfs
+RUN git-lfs --version
 
 # install terraform binaries
 ARG DEFAULT_TERRAFORM_VERSION
@@ -160,7 +153,7 @@ RUN ./download-release.sh \
         "terraform" \
         "${TARGETPLATFORM}" \
         "${DEFAULT_TERRAFORM_VERSION}" \
-        "1.9.8 1.10.5 ${DEFAULT_TERRAFORM_VERSION}" \
+        "${DEFAULT_TERRAFORM_VERSION}" \
     && ./download-release.sh \
         "tofu" \
         "${TARGETPLATFORM}" \
