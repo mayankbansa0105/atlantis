@@ -10,7 +10,7 @@ ARG DEFAULT_TERRAFORM_VERSION=1.14.9
 # renovate: datasource=github-releases depName=opentofu/opentofu versioning=hashicorp
 ARG DEFAULT_OPENTOFU_VERSION=1.12.0
 # renovate: datasource=github-releases depName=open-policy-agent/conftest
-ARG DEFAULT_CONFTEST_VERSION=0.66.0
+ARG DEFAULT_CONFTEST_VERSION=0.68.2
 
 # Stage 1: build artifact and download deps
 
@@ -133,6 +133,8 @@ RUN case ${TARGETPLATFORM} in \
         "linux/arm/v7") GIT_LFS_ARCH=arm ;; \
     esac && \
     curl -L -s --output git-lfs.tar.gz "https://github.com/git-lfs/git-lfs/releases/download/v${GIT_LFS_VERSION}/git-lfs-linux-${GIT_LFS_ARCH}-v${GIT_LFS_VERSION}.tar.gz" && \
+    curl -L -s --output sha256sums.asc "https://github.com/git-lfs/git-lfs/releases/download/v${GIT_LFS_VERSION}/sha256sums.asc" && \
+    grep "git-lfs-linux-${GIT_LFS_ARCH}-v${GIT_LFS_VERSION}.tar.gz" sha256sums.asc | sha256sum -c && \
     tar --strip-components=1 -xf git-lfs.tar.gz && \
     chmod +x git-lfs && \
     mv git-lfs /usr/bin/git-lfs && \
@@ -148,12 +150,13 @@ ENV DEFAULT_OPENTOFU_VERSION=${DEFAULT_OPENTOFU_VERSION}
 COPY --from=builder /app/scripts/download-release.sh download-release.sh
 
 # In the official Atlantis image, we only have the latest of each Terraform version.
-# Each binary is about 80 MB so we limit it to the 4 latest minor releases or fewer
+# Each binary is about 80 MB so we limit it to the 3 latest minor releases or fewer
+# Removed 1.8.5 due to critical CVE-2024-24790 (Go 1.22.1)
 RUN ./download-release.sh \
         "terraform" \
         "${TARGETPLATFORM}" \
         "${DEFAULT_TERRAFORM_VERSION}" \
-        "1.8.5 1.9.8 1.10.5 ${DEFAULT_TERRAFORM_VERSION}" \
+        "1.9.8 1.10.5 ${DEFAULT_TERRAFORM_VERSION}" \
     && ./download-release.sh \
         "tofu" \
         "${TARGETPLATFORM}" \
@@ -186,7 +189,7 @@ COPY --from=deps /usr/bin/git-lfs /usr/bin/git-lfs
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 # renovate: datasource=repology depName=alpine_3_23/ca-certificates versioning=loose
-ENV CA_CERTIFICATES_VERSION="20260611-r0"
+ENV CA_CERTIFICATES_VERSION="20260413-r0"
 # renovate: datasource=repology depName=alpine_3_23/curl versioning=loose
 ENV CURL_VERSION="8.19.0-r0"
 # renovate: datasource=repology depName=alpine_3_23/git versioning=loose
