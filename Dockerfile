@@ -103,8 +103,7 @@ RUN apt-get update && \
     openssh-server=${DEBIAN_OPENSSH_SERVER_VERSION} \
     dumb-init=${DEBIAN_DUMB_INIT_VERSION} \
     gnupg=${DEBIAN_GNUPG_VERSION} \
-    openssl=${DEBIAN_OPENSSL_VERSION} \
-    jq=${DEBIAN_JQ_VERSION} && \
+    openssl=${DEBIAN_OPENSSL_VERSION} &&\
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -221,8 +220,7 @@ RUN apk add --no-cache \
     openssh=${OPENSSH_VERSION} \
     dumb-init=${DUMB_INIT_VERSION} \
     gcompat=${GCOMPAT_VERSION} \
-    coreutils-env=${COREUTILS_ENV_VERSION} \
-    jq=${JQ_VERSION}
+    coreutils-env=${COREUTILS_ENV_VERSION} 
 
 # Strip file capabilities only under fcap_scan_dirs (common rootfs locations for
 # binaries and libs: /bin, /sbin, /usr, /opt, /lib, /lib64). This is a scoped
