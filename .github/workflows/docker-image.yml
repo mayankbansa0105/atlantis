@@ -29,4 +29,13 @@ jobs:
           target: alpine
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ secrets.USERNAME }}/atlantis:mayank-tag
+          tags: ${{ secrets.USERNAME }}/atlantis:alpine
+      - name: Build and push alpine image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: debian
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ secrets.USERNAME }}/atlantis:debian
+      
